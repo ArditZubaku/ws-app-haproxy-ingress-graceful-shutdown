@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: haproxy-ingress
+  annotations:
+    haproxy.org/ingress.class: haproxy
+    haproxy.org/check: "true"
+    haproxy.org/check-http: "/healthz"
+spec:
+  ingressClassName: haproxy
+  rules:
+    - host: haproxy.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ws-app
+                port:
+                  number: 8080
+          # - path: /healthz
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: ws-app
+          #       port:
+          #         number: 8080
