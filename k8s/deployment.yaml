@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ws-app
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ws-app
+  template:
+    metadata:
+      labels:
+        app: ws-app
+    spec:
+      containers:
+        - name: ws-app
+          image: ws-app:latest
+          imagePullPolicy: Never # Use local image
+          ports:
+            - containerPort: 8080
+          # readinessProbe:
+          #   httpGet:
+          #     path: /healthz
+          #     port: 8080
+          #   initialDelaySeconds: 3
+          #   periodSeconds: 5
