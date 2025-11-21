@@ -20,7 +20,26 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		wsHandler(w, r, cm)
+		// Check if this is a WebSocket upgrade request
+		if websocket.IsWebSocketUpgrade(r) {
+			wsHandler(w, r, cm)
+			return
+		}
+
+		// Regular HTTP request - return a simple response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := fmt.Sprintf(
+			`{"message": "HTTP server is running", "timestamp": "%s", "method": "%s", "path": "%s"}`,
+			time.Now().Format(time.RFC3339),
+			r.Method,
+			r.URL.Path,
+		)
+		w.Write([]byte(response))
+		slog.Info("HTTP request handled", "method", r.Method, "path", r.URL.Path)
+	})
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
 	server := new(http.Server)
