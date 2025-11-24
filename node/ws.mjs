@@ -4,6 +4,7 @@ import WebSocket from 'ws';
 // Parse command line arguments
 const args = process.argv.slice(2);
 const useSlowEndpoint = args.includes('-s');
+const enableRetries = args.includes('-r');
 
 /**
  * @param {string} url
@@ -82,6 +83,13 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 			console.log(`[${url}] Received ${messageCount} messages`);
 			console.log(`[${url}] Close code: ${code}, reason: ${reason.toString()}`);
 
+			// Only retry if -r flag is enabled
+			if (!enableRetries) {
+				console.log('Connection closed. Retries disabled.');
+				resolve();
+				return;
+			}
+
 			// Check if we should retry based on close code and retry count
 			const shouldRetry = retryCount < maxRetries && (
 				!connectionEstablished ||  // Initial connection failed
@@ -117,6 +125,13 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 			cleanup();
 			console.log(`[${url}] WebSocket error:`, error.message);
 
+			// If retries are disabled, don't attempt to reconnect
+			if (!enableRetries) {
+				console.log('Connection error. Retries disabled.');
+				reject(error);
+				return;
+			}
+
 			// If we haven't established connection yet, let the close handler deal with retry
 			if (!connectionEstablished) {
 				// The close event will handle the retry logic
@@ -124,13 +139,17 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 			}
 
 			// If connection was established and then errored, try to reconnect
-			const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-			console.log(`Connection error occurred. Retrying in ${delay}ms...`);
-			setTimeout(() => {
-				connectToApp(url, retryCount + 1, maxRetries)
-					.then(resolve)
-					.catch(reject);
-			}, delay);
+			if (retryCount < maxRetries) {
+				const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+				console.log(`Connection error occurred. Retrying in ${delay}ms...`);
+				setTimeout(() => {
+					connectToApp(url, retryCount + 1, maxRetries)
+						.then(resolve)
+						.catch(reject);
+				}, delay);
+			} else {
+				reject(new Error(`Failed to connect after ${maxRetries + 1} attempts: ${error.message}`));
+			}
 		});
 	});
 }
