@@ -35,7 +35,8 @@ func RootHandler(cm *conn_manager.ConnectionManager) http.HandlerFunc {
 }
 
 func HealthzHandler(w http.ResponseWriter, r *http.Request) {
-	slog.Warn(
+	// Only log health checks at debug level to reduce noise
+	slog.Debug(
 		"HealthzHandler received request:",
 		"method", r.Method,
 		"path", r.URL.Path,
