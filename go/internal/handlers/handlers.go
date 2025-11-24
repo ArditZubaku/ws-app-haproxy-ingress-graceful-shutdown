@@ -35,7 +35,17 @@ func RootHandler(cm *conn_manager.ConnectionManager) http.HandlerFunc {
 }
 
 func HealthzHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	slog.Info(
+		"HealthzHandler INFO: ",
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr,
+		"user_agent", r.UserAgent(),
+	)
+	switch r.Method {
+	case http.MethodGet, http.MethodOptions:
+		// Allow HAProxy OPTIONS / K8s GET
+	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -48,8 +58,7 @@ func HealthzHandler(w http.ResponseWriter, r *http.Request) {
 		"timestamp": time.Now().Unix(),
 	}
 
-	err := json.NewEncoder(w).Encode(response)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		slog.Error("Failed to encode health response", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
