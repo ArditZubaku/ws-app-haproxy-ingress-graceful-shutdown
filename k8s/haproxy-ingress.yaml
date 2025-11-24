@@ -19,10 +19,3 @@ spec:
                 name: ws-app
                 port:
                   number: 8080
-          # - path: /healthz
-          #   pathType: Prefix
-          #   backend:
-          #     service:
-          #       name: ws-app
-          #       port:
-          #         number: 8080
