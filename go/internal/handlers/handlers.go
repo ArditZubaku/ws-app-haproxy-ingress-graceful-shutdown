@@ -36,7 +36,7 @@ func RootHandler(cm *conn_manager.ConnectionManager) http.HandlerFunc {
 
 func HealthzHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Warn(
-		"HealthzHandler INFO: ",
+		"HealthzHandler received request:",
 		"method", r.Method,
 		"path", r.URL.Path,
 		"remote_addr", r.RemoteAddr,
