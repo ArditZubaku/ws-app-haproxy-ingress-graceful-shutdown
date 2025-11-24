@@ -78,9 +78,9 @@ func main() {
 	minikubeIP := strings.TrimSpace(execCmdGetOutput("minikube ip"))
 	println("Minikube IP:", minikubeIP)
 
-	// Wait a bit for services to be ready
+	// Wait for HAProxy pods to be ready
 	println("Waiting for HAProxy to be ready...")
-	execCmd("kubectl wait --for=condition=available --timeout=60s deployment/haproxy-ingress-kubernetes-ingress -n haproxy-controller")
+	execCmd("kubectl wait --for=condition=ready --timeout=60s pod -l app.kubernetes.io/name=kubernetes-ingress -n haproxy-controller")
 
 	// Try the curl using the dynamic ingress host
 	curlURL := fmt.Sprintf("http://%s:%s", ingressHost, nodePort)
