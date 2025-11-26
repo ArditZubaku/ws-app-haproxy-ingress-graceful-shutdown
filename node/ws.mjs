@@ -3,18 +3,43 @@ import WebSocket from 'ws';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
+
+// Show help if requested
+if (args.includes('-h') || args.includes('--help')) {
+	console.log('Usage: node ws.mjs [options]');
+	console.log('Options:');
+	console.log('  -s              Use slow endpoint mode');
+	console.log('  -r              Enable automatic retries on connection failure');
+	console.log('  -n <number>     Number of clients to spin up (default: 1)');
+	console.log('  -h, --help      Show this help message');
+	process.exit(0);
+}
+
 const useSlowEndpoint = args.includes('-s');
 const enableRetries = args.includes('-r');
+
+// Parse number of clients (-n <number>)
+let numClients = 1;
+const clientsIndex = args.indexOf('-n');
+if (clientsIndex !== -1 && clientsIndex + 1 < args.length) {
+	const clientsArg = parseInt(args[clientsIndex + 1], 10);
+	if (!isNaN(clientsArg) && clientsArg > 0) {
+		numClients = clientsArg;
+	} else {
+		console.error('Invalid number of clients. Using default value: 1');
+	}
+}
 
 /**
  * @param {string} url
  * @param {number} retryCount
  * @param {number} maxRetries
+ * @param {number} clientId
  * @returns
  */
-function connectToApp(url, retryCount = 0, maxRetries = 5) {
+function connectToApp(url, retryCount = 0, maxRetries = 5, clientId = 1) {
 	return new Promise((resolve, reject) => {
-		console.log(`[Attempt ${retryCount + 1}/${maxRetries + 1}] Connecting to ${url}...`);
+		console.log(`[Client ${clientId}][Attempt ${retryCount + 1}/${maxRetries + 1}] Connecting to ${url}...`);
 
 		const ws = new WebSocket(url);
 		const startTime = Date.now();
@@ -32,11 +57,11 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 
 		ws.on('open', () => {
 			connectionEstablished = true;
-			console.log(`Connected to ${url}`);
+			console.log(`[Client ${clientId}] Connected to ${url}`);
 
 			// Send an initial message - either slow or regular
 			if (useSlowEndpoint) {
-				console.log('Sending slow request via WebSocket...');
+				console.log(`[Client ${clientId}] Sending slow request via WebSocket...`);
 				waitingForSlowResponse = true;
 				ws.send('SLOW_REQUEST');
 			} else {
@@ -57,17 +82,17 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 			messageCount++;
 			const elapsed = (Date.now() - startTime) / 1000;
 			const message = data.toString();
-			console.log(`[${url}][${elapsed.toFixed(1)}s] ${message}`);
+			console.log(`[Client ${clientId}][${url}][${elapsed.toFixed(1)}s] ${message}`);
 
 			// Handle slow mode responses
 			if (useSlowEndpoint && waitingForSlowResponse) {
 				if (message.startsWith('SLOW_COMPLETE') || message.startsWith('SLOW_INTERRUPTED')) {
 					waitingForSlowResponse = false;
-					console.log('Slow operation completed. Waiting 3 seconds before sending next slow request...');
+					console.log(`[Client ${clientId}] Slow operation completed. Waiting 3 seconds before sending next slow request...`);
 
 					setTimeout(() => {
 						if (ws.readyState === WebSocket.OPEN) {
-							console.log('Sending another slow request via WebSocket...');
+							console.log(`[Client ${clientId}] Sending another slow request via WebSocket...`);
 							waitingForSlowResponse = true;
 							ws.send(`SLOW_PING at ${new Date().toISOString()}`);
 						}
@@ -79,13 +104,13 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 		ws.on('close', (code, reason) => {
 			cleanup();
 			const totalTime = (Date.now() - startTime) / 1000;
-			console.log(`[${url}] Connection closed after ${totalTime.toFixed(1)}s`);
-			console.log(`[${url}] Received ${messageCount} messages`);
-			console.log(`[${url}] Close code: ${code}, reason: ${reason.toString()}`);
+			console.log(`[Client ${clientId}][${url}] Connection closed after ${totalTime.toFixed(1)}s`);
+			console.log(`[Client ${clientId}][${url}] Received ${messageCount} messages`);
+			console.log(`[Client ${clientId}][${url}] Close code: ${code}, reason: ${reason.toString()}`);
 
 			// Only retry if -r flag is enabled
 			if (!enableRetries) {
-				console.log('Connection closed. Retries disabled.');
+				console.log(`[Client ${clientId}] Connection closed. Retries disabled.`);
 				resolve();
 				return;
 			}
@@ -104,9 +129,9 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 			if (shouldRetry) {
 				// Retry connection
 				const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff, max 10s
-				console.log(`Connection ${connectionEstablished ? 'dropped' : 'failed'}. Retrying in ${delay}ms...`);
+				console.log(`[Client ${clientId}] Connection ${connectionEstablished ? 'dropped' : 'failed'}. Retrying in ${delay}ms...`);
 				setTimeout(() => {
-					connectToApp(url, retryCount + 1, maxRetries)
+					connectToApp(url, retryCount + 1, maxRetries, clientId)
 						.then(resolve)
 						.catch(reject);
 				}, delay);
@@ -115,7 +140,7 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 				if (retryCount >= maxRetries) {
 					reject(new Error(`Failed to maintain connection after ${maxRetries + 1} attempts`));
 				} else {
-					console.log(`Connection closed cleanly (code: ${code}). Not retrying.`);
+					console.log(`[Client ${clientId}] Connection closed cleanly (code: ${code}). Not retrying.`);
 					resolve();
 				}
 			}
@@ -123,11 +148,11 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 
 		ws.on('error', (error) => {
 			cleanup();
-			console.log(`[${url}] WebSocket error:`, error.message);
+			console.log(`[Client ${clientId}][${url}] WebSocket error:`, error.message);
 
 			// If retries are disabled, don't attempt to reconnect
 			if (!enableRetries) {
-				console.log('Connection error. Retries disabled.');
+				console.log(`[Client ${clientId}] Connection error. Retries disabled.`);
 				reject(error);
 				return;
 			}
@@ -141,9 +166,9 @@ function connectToApp(url, retryCount = 0, maxRetries = 5) {
 			// If connection was established and then errored, try to reconnect
 			if (retryCount < maxRetries) {
 				const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-				console.log(`Connection error occurred. Retrying in ${delay}ms...`);
+				console.log(`[Client ${clientId}] Connection error occurred. Retrying in ${delay}ms...`);
 				setTimeout(() => {
-					connectToApp(url, retryCount + 1, maxRetries)
+					connectToApp(url, retryCount + 1, maxRetries, clientId)
 						.then(resolve)
 						.catch(reject);
 				}, delay);
@@ -167,8 +192,17 @@ async function main() {
 
 	const url = `ws://${ingressHost}:${haproxyIngressNodePort}`;
 
+	console.log(`Starting ${numClients} WebSocket client${numClients > 1 ? 's' : ''}...`);
+
 	try {
-		await connectToApp(url);
+		// Create array of connection promises for multiple clients
+		const connectionPromises = [];
+		for (let i = 1; i <= numClients; i++) {
+			connectionPromises.push(connectToApp(url, 0, 5, i));
+		}
+
+		// Wait for all clients to complete
+		await Promise.allSettled(connectionPromises);
 	} catch (error) {
 		console.error('Error during WebSocket connection:', error);
 		process.exit(1);
