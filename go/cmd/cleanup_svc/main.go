@@ -9,26 +9,26 @@ import (
 )
 
 func main() {
-	const socketPath = "/tmp/ipc.sock"
+	const serviceEndpoint = "ws-app:9999"
 
-	ln, err := net.Dial("unix", socketPath)
+	conn, err := net.Dial("tcp", serviceEndpoint)
 	if err != nil {
 		panic(err)
 	}
-	defer ln.Close()
+	defer conn.Close()
 
-	slog.Info("Connected to IPC socket at ", "addr", ln.RemoteAddr().String())
+	slog.Info("Connected to service at ", "addr", conn.RemoteAddr().String())
 
-	scanner := bufio.NewScanner(ln)
+	scanner := bufio.NewScanner(conn)
 	for {
-		n, err := fmt.Fprintln(ln, "11")
+		n, err := fmt.Fprintln(conn, "11")
 		if err != nil || n == 0 {
-			slog.Error("Failed to write to IPC socket", "error", err)
+			slog.Error("Failed to write to service", "error", err)
 			return
 		}
 
 		if scanner.Scan() {
-			slog.Info("Received from IPC socket", "message", scanner.Text())
+			slog.Info("Received from service", "message", scanner.Text())
 		}
 
 		time.Sleep(10 * time.Second)
