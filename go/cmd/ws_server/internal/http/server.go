@@ -1,5 +1,5 @@
-// Package server provides HTTP server functionality with WebSocket support and graceful shutdown.
-package server
+// Package http provides HTTP server functionality with WebSocket support and graceful shutdown.
+package http
 
 import (
 	"context"

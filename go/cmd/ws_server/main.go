@@ -4,13 +4,13 @@ import (
 	"log/slog"
 
 	"github.com/ArditZubaku/go-node-ws/internal/connmanager"
-	"github.com/ArditZubaku/go-node-ws/internal/ipc"
-	"github.com/ArditZubaku/go-node-ws/internal/server"
+	"github.com/ArditZubaku/go-node-ws/internal/http"
+	"github.com/ArditZubaku/go-node-ws/internal/tcp"
 )
 
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelInfo)
 	cm := connmanager.NewConnectionManager()
-	go ipc.HandleIPCCommunication(cm)
-	server.NewServer(cm).Start()
+	go tcp.HandleServiceCommunication(cm)
+	http.NewServer(cm).Start()
 }

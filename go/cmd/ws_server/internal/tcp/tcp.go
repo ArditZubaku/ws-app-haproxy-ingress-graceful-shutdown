@@ -1,31 +1,25 @@
-// Package ipc provides inter-process communication functionality via Unix sockets.
-package ipc
+// Package tcp provides inter-service communication functionality via TCP.
+package tcp
 
 import (
 	"bufio"
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
 	"strconv"
 
 	"github.com/ArditZubaku/go-node-ws/internal/connmanager"
 )
 
-func HandleIPCCommunication(cm *connmanager.ConnectionManager) {
-	const socketPath = "/tmp/ipc.sock"
-	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
-		panic(err)
-	}
-
-	ln, err := net.Listen("unix", socketPath)
+func HandleServiceCommunication(cm *connmanager.ConnectionManager) {
+	ln, err := net.Listen("tcp", ":9999")
 	if err != nil {
-		slog.Error("Failed to listen on unix socket", "error", err)
+		slog.Error("Failed to listen on TCP port", "error", err)
 		return
 	}
 	defer ln.Close()
 
-	slog.Info("IPC server listening on", "addr", ln.Addr().String())
+	slog.Info("Service communication server listening on", "addr", ln.Addr().String())
 
 	for {
 		conn, err := ln.Accept()
@@ -33,11 +27,11 @@ func HandleIPCCommunication(cm *connmanager.ConnectionManager) {
 			slog.Error("Failed to accept IPC connection", "error", err)
 			continue
 		}
-		go handleIPCConnection(conn, cm)
+		go handleServiceConnection(conn, cm)
 	}
 }
 
-func handleIPCConnection(conn net.Conn, cm *connmanager.ConnectionManager) {
+func handleServiceConnection(conn net.Conn, cm *connmanager.ConnectionManager) {
 	defer conn.Close()
 	reader := bufio.NewScanner(conn)
 
@@ -48,14 +42,14 @@ func handleIPCConnection(conn net.Conn, cm *connmanager.ConnectionManager) {
 			slog.Error("Invalid number received", "error", err)
 			continue
 		}
-		slog.Info("Received IPC message", "message", n)
+		slog.Info("Received service message", "message", n)
 
 		cm.CloseNConnections(n)
 
 		// No need for newline, fmt.Fprintln adds it
 		n, err = fmt.Fprintln(conn, "Closing "+msg+" WS connections")
 		if n == 0 || err != nil {
-			slog.Error("Failed to write IPC response", "error", err)
+			slog.Error("Failed to write service response", "error", err)
 			return
 		}
 	}
