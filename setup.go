@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,28 +37,37 @@ func main() {
 	println("Image found in minikube: \n", execCmdGetOutput("minikube image ls | grep haproxy"))
 	execCmd("helm install haproxy-ingress haproxytech/kubernetes-ingress --namespace haproxy-controller --create-namespace --set controller.kind=Deployment --set controller.ingressClass=haproxy --set controller.service.type=NodePort --set controller.image.repository=haproxytech/kubernetes-ingress --set controller.image.tag=3.1.14")
 	println("HAProxy-Controller pods: \n", execCmdGetOutput("kubectl get pods -n haproxy-controller"))
-	execCmd(`kubectl patch deployment haproxy-ingress-kubernetes-ingress -n haproxy-controller -p='
-{
-  "spec": {
-    "template": {
-      "spec": {
-        "terminationGracePeriodSeconds": 180,
-        "containers": [
-          {
-            "name": "kubernetes-ingress-controller",
-            "lifecycle": {
-              "preStop": {
-                "exec": {
-                  "command": ["/bin/sh", "-c", "sleep 2 && kill -USR1 $(pidof haproxy) && sleep 30"]
-                }
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
-}'`)
+
+	type Patch struct {
+		Spec struct {
+			Template struct {
+				Spec struct {
+					TerminationGracePeriodSeconds int `json:"terminationGracePeriodSeconds,omitempty"`
+					Containers                    []struct {
+						Name      string `json:"name,omitempty"`
+						Lifecycle struct {
+							PreStop struct {
+								Exec struct {
+									Command []string `json:"command,omitzero"`
+								} `json:"exec,omitzero"`
+							} `json:"preStop,omitzero"`
+						} `json:"lifecycle,omitzero"`
+					} `json:"containers,omitzero"`
+				} `json:"spec,omitzero"`
+			} `json:"template,omitzero"`
+		} `json:"spec,omitzero"`
+	}
+	patchStruct := new(Patch)
+	patchStruct.Spec.Template.Spec.TerminationGracePeriodSeconds = 901
+	patchBytes, err := json.Marshal(patchStruct)
+	fmt.Println("Generated patch JSON:", string(patchBytes))
+	panicIfErr(err)
+
+	patchCmd := fmt.Sprintf(
+		"kubectl patch deployment haproxy-ingress-kubernetes-ingress -n haproxy-controller -p='%s'",
+		string(patchBytes),
+	)
+	execCmd(patchCmd)
 	execCmd("kubectl apply -f k8s/haproxy-ingress.yaml")
 
 	// Configure /etc/hosts
