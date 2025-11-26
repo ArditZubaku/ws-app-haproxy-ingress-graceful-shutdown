@@ -128,7 +128,7 @@ func main() {
 	println("Setup completed successfully.")
 
 	println("Spinning up 100 Node.js WS clients")
-	execCmd("node nodejs/ws.mjs -n 100 > ws-clients.log 2>&1 &") // Run in background
+	go execCmd("node nodejs/ws.mjs -n 100 > ws-clients.log 2>&1")
 
 	time.Sleep(10 * time.Second)
 	execCmd("docker build -t cleanup_svc ./go/cmd/cleanup_svc")
@@ -137,6 +137,8 @@ func main() {
 	println("Image found in minikube: \n", execCmdGetOutput("minikube image ls | grep cleanup_svc"))
 	println("Going to run cleanup_svc")
 	execCmd("kubectl apply -f k8s/cleanup_svc/deployment.yaml")
+
+	select {} // Keep the main goroutine alive
 }
 
 func execCmd(cmd string) {
