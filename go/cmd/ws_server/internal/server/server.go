@@ -11,17 +11,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ArditZubaku/go-node-ws/internal/conn_manager"
+	"github.com/ArditZubaku/go-node-ws/internal/connmanager"
 	"github.com/ArditZubaku/go-node-ws/internal/handlers"
 )
 
 type Server struct {
-	cm   *conn_manager.ConnectionManager
+	cm   *connmanager.ConnectionManager
 	http *http.Server
 	mux  *http.ServeMux
 }
 
-func NewServer(cm *conn_manager.ConnectionManager) *Server {
+func NewServer(cm *connmanager.ConnectionManager) *Server {
 	mux := http.NewServeMux()
 
 	s := &Server{

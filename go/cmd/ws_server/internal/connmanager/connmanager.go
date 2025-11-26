@@ -1,4 +1,6 @@
-package conn_manager
+// Package connmanager provides WebSocket connection management functionality.
+// It tracks active connections and handles graceful shutdown procedures.
+package connmanager
 
 import (
 	"context"
@@ -35,6 +37,46 @@ func (cm *ConnectionManager) RemoveConnection(conn *websocket.Conn) {
 	defer cm.mu.Unlock()
 	delete(cm.connections, conn)
 	slog.Info("WebSocket connection removed", "total", len(cm.connections))
+}
+
+func (cm *ConnectionManager) GetNConnections(n int) []*websocket.Conn {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	connections := make([]*websocket.Conn, 0, n)
+	for conn := range cm.connections {
+		if len(connections) >= n {
+			break
+		}
+		connections = append(connections, conn)
+	}
+	return connections
+}
+
+func (cm *ConnectionManager) CloseNConnections(n int) {
+	connections := cm.GetNConnections(n)
+
+	slog.Info("Closing WebSocket connections", "count", len(connections))
+
+	for _, conn := range connections {
+		// Send close message
+		if err := conn.WriteMessage(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(
+				websocket.CloseGoingAway,
+				"Server shutting down",
+			),
+		); err != nil {
+			slog.Error("Error sending close message", "error", err)
+		}
+
+		if err := conn.Close(); err != nil {
+			slog.Error("Error closing WebSocket connection", "error", err)
+		}
+
+		// Remove from map
+		cm.RemoveConnection(conn)
+	}
 }
 
 func (cm *ConnectionManager) CloseAllConnections(ctx context.Context) {

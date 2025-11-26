@@ -3,12 +3,16 @@ package ipc
 
 import (
 	"bufio"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
+	"strconv"
+
+	"github.com/ArditZubaku/go-node-ws/internal/connmanager"
 )
 
-func HandleIPCCommunication() {
+func HandleIPCCommunication(cm *connmanager.ConnectionManager) {
 	const socketPath = "/tmp/ipc.sock"
 	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
 		panic(err)
@@ -29,23 +33,27 @@ func HandleIPCCommunication() {
 			slog.Error("Failed to accept IPC connection", "error", err)
 			continue
 		}
-		go handleIPCConnection(conn)
+		go handleIPCConnection(conn, cm)
 	}
 }
 
-func handleIPCConnection(conn net.Conn) {
+func handleIPCConnection(conn net.Conn, cm *connmanager.ConnectionManager) {
 	defer conn.Close()
 	reader := bufio.NewScanner(conn)
 
 	for reader.Scan() {
 		msg := reader.Text()
-		slog.Info("Received IPC message", "message", msg)
+		n, err := strconv.Atoi(msg)
+		if err != nil {
+			slog.Error("Invalid number received", "error", err)
+			continue
+		}
+		slog.Info("Received IPC message", "message", n)
 
-		resp := "Closing " + msg + " WS connections\n"
+		cm.CloseNConnections(n)
 
-		// TODO: Integrate with connection manager to close connections based on msg
-
-		n, err := conn.Write([]byte(resp))
+		// No need for newline, fmt.Fprintln adds it
+		n, err = fmt.Fprintln(conn, "Closing "+msg+" WS connections")
 		if n == 0 || err != nil {
 			slog.Error("Failed to write IPC response", "error", err)
 			return

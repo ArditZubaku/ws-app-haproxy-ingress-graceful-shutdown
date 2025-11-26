@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ArditZubaku/go-node-ws/internal/conn_manager"
+	"github.com/ArditZubaku/go-node-ws/internal/connmanager"
 	"github.com/gorilla/websocket"
 )
 
-func RootHandler(cm *conn_manager.ConnectionManager) http.HandlerFunc {
+func RootHandler(cm *connmanager.ConnectionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if this is a WebSocket upgrade request
 		if websocket.IsWebSocketUpgrade(r) {
@@ -73,7 +73,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func wsHandler(w http.ResponseWriter, r *http.Request, cm *conn_manager.ConnectionManager) {
+func wsHandler(w http.ResponseWriter, r *http.Request, cm *connmanager.ConnectionManager) {
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
