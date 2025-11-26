@@ -27,15 +27,23 @@ func main() {
 	execCmd("minikube image load ws-app")
 	execCmd("minikube image load ws-app")
 	println("Image found in minikube: \n", execCmdGetOutput("minikube image ls | grep ws"))
-	execCmd("kubectl apply -f k8s/deployment.yaml")
-	execCmd("kubectl apply -f k8s/service.yaml")
+	execCmd("kubectl apply -f k8s/ws_app/deployment.yaml")
+	execCmd("kubectl apply -f k8s/ws_app/service.yaml")
 	execCmd("helm repo add haproxytech https://haproxytech.github.io/helm-charts")
 	execCmd("helm repo update")
 	execCmd("docker pull haproxytech/kubernetes-ingress:3.1.14")
 	execCmd("docker save haproxytech/kubernetes-ingress:3.1.14 -o haproxy-ingress.tar")
 	execCmd("minikube image load haproxy-ingress.tar")
+	printIfErr(os.Remove("haproxy-ingress.tar"))
 	println("Image found in minikube: \n", execCmdGetOutput("minikube image ls | grep haproxy"))
-	execCmd("helm install haproxy-ingress haproxytech/kubernetes-ingress --namespace haproxy-controller --create-namespace --set controller.kind=Deployment --set controller.ingressClass=haproxy --set controller.service.type=NodePort --set controller.image.repository=haproxytech/kubernetes-ingress --set controller.image.tag=3.1.14")
+	execCmd("helm install haproxy-ingress haproxytech/kubernetes-ingress " +
+		"--namespace haproxy-controller " +
+		"--create-namespace " +
+		"--set controller.kind=Deployment " +
+		"--set controller.ingressClass=haproxy " +
+		"--set controller.service.type=NodePort " +
+		"--set controller.image.repository=haproxytech/kubernetes-ingress " +
+		"--set controller.image.tag=3.1.14")
 	println("HAProxy-Controller pods: \n", execCmdGetOutput("kubectl get pods -n haproxy-controller"))
 
 	type Patch struct {
@@ -68,7 +76,7 @@ func main() {
 		string(patchBytes),
 	)
 	execCmd(patchCmd)
-	execCmd("kubectl apply -f k8s/haproxy-ingress.yaml")
+	execCmd("kubectl apply -f k8s/haproxy/haproxy-ingress.yaml")
 
 	// Configure /etc/hosts
 	execCmd(`echo "$(minikube ip) haproxy.local" | sudo tee -a /etc/hosts`)
@@ -78,11 +86,23 @@ func main() {
 	println("Services in haproxy-controller namespace:")
 	println(execCmdGetOutput("kubectl get svc -n haproxy-controller"))
 
-	nodePort := strings.TrimSpace(execCmdGetOutput(`kubectl get svc -n haproxy-controller haproxy-ingress-kubernetes-ingress -o jsonpath='{.spec.ports[0].nodePort}'`))
+	nodePort := strings.TrimSpace(
+		execCmdGetOutput(
+			"kubectl get svc " +
+				"-n haproxy-controller " +
+				"haproxy-ingress-kubernetes-ingress " +
+				"-o jsonpath='{.spec.ports[0].nodePort}'",
+		),
+	)
 	println("HAProxy NodePort:", nodePort)
 
 	// Get the ingress host programmatically
-	ingressHost := strings.TrimSpace(execCmdGetOutput("kubectl get ingress haproxy-ingress -o jsonpath='{.spec.rules[0].host}'"))
+	ingressHost := strings.TrimSpace(
+		execCmdGetOutput(
+			"kubectl get ingress haproxy-ingress " +
+				"-o jsonpath='{.spec.rules[0].host}'",
+		),
+	)
 	println("Ingress Host:", ingressHost)
 
 	minikubeIP := strings.TrimSpace(execCmdGetOutput("minikube ip"))
@@ -90,7 +110,13 @@ func main() {
 
 	// Wait for HAProxy pods to be ready
 	println("Waiting for HAProxy to be ready...")
-	execCmd("kubectl wait --for=condition=ready --timeout=60s pod -l app.kubernetes.io/name=kubernetes-ingress -n haproxy-controller")
+	execCmd("kubectl wait " +
+		"--for=condition=ready " +
+		"--timeout=60s " +
+		"pod " +
+		"-l app.kubernetes.io/name=kubernetes-ingress " +
+		"-n haproxy-controller",
+	)
 
 	// Try the curl using the dynamic ingress host
 	curlURL := fmt.Sprintf("http://%s:%s", ingressHost, nodePort)
@@ -165,5 +191,11 @@ func execCmdGetOutput(cmd string) string {
 func panicIfErr(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+func printIfErr(err error) {
+	if err != nil {
+		fmt.Println("Error:", err)
 	}
 }
