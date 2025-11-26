@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -23,9 +24,10 @@ func main() {
 	println("Checking minikube status...")
 	execCmd("minikube status")
 
-	execCmd("docker build -t ws-app ./go")
+	execCmd("docker build -t ws-app ./go/cmd/ws_server")
+	execCmd("docker build -t cleanup_svc ./go/cmd/cleanup_svc")
 	execCmd("minikube image load ws-app")
-	execCmd("minikube image load ws-app")
+	execCmd("minikube image load cleanup_svc")
 	println("Image found in minikube: \n", execCmdGetOutput("minikube image ls | grep ws"))
 	execCmd("kubectl apply -f k8s/ws_app/deployment.yaml")
 	execCmd("kubectl apply -f k8s/ws_app/service.yaml")
@@ -123,6 +125,18 @@ func main() {
 	println("Trying to curl:", curlURL)
 	println("CURL RESULT:")
 	println(execCmdGetOutput(fmt.Sprintf("curl -v %s", curlURL)))
+	println("Setup completed successfully.")
+
+	println("Spinning up 100 Node.js WS clients")
+	execCmd("node node/ws.mjs -n 100 > ws-clients.log 2>&1 &") // Run in background
+
+	time.Sleep(10 * time.Second)
+	execCmd("docker build -t cleanup_svc ./go/cmd/cleanup_svc")
+	execCmd("minikube image load cleanup_svc")
+	execCmd("minikube image load cleanup_svc")
+	println("Image found in minikube: \n", execCmdGetOutput("minikube image ls | grep cleanup_svc"))
+	println("Going to run cleanup_svc")
+	execCmd("kubectl apply -f k8s/cleanup_svc/deployment.yaml")
 }
 
 func execCmd(cmd string) {
