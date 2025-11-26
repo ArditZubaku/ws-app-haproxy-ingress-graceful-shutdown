@@ -78,7 +78,7 @@ func main() {
 		string(patchBytes),
 	)
 	execCmd(patchCmd)
-	execCmd("kubectl apply -f k8s/haproxy/haproxy-ingress.yaml")
+	execCmd("kubectl apply -f k8s/haproxy/ingress.yaml")
 
 	// Configure /etc/hosts
 	execCmd(`echo "$(minikube ip) haproxy.local" | sudo tee -a /etc/hosts`)
@@ -128,7 +128,7 @@ func main() {
 	println("Setup completed successfully.")
 
 	println("Spinning up 100 Node.js WS clients")
-	execCmd("node node/ws.mjs -n 100 > ws-clients.log 2>&1 &") // Run in background
+	execCmd("node nodejs/ws.mjs -n 100 > ws-clients.log 2>&1 &") // Run in background
 
 	time.Sleep(10 * time.Second)
 	execCmd("docker build -t cleanup_svc ./go/cmd/cleanup_svc")
