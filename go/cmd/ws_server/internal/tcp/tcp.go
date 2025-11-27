@@ -11,10 +11,7 @@ import (
 	"github.com/ArditZubaku/go-node-ws/internal/connmanager"
 )
 
-func HandleServiceCommunication(
-	cm *connmanager.ConnectionManager,
-	sendToCleanupSvc <-chan struct{},
-) {
+func HandleServiceCommunication(cm *connmanager.ConnectionManager) {
 	ln, err := net.Listen("tcp", ":9999")
 	if err != nil {
 		slog.Error("Failed to listen on TCP port", "error", err)
@@ -30,19 +27,15 @@ func HandleServiceCommunication(
 			slog.Error("Failed to accept IPC connection", "error", err)
 			continue
 		}
-		go handleServiceConnection(conn, cm, sendToCleanupSvc)
+		go handleServiceConnection(conn, cm)
 	}
 }
 
 func handleServiceConnection(
 	conn net.Conn,
 	cm *connmanager.ConnectionManager,
-	sendToCleanupSvc <-chan struct{},
 ) {
 	defer conn.Close()
-
-	<-sendToCleanupSvc
-	conn.Write([]byte{1}) // Notify cleanup service to start - just a byte signal
 
 	reader := bufio.NewScanner(conn)
 

@@ -10,8 +10,7 @@ import (
 
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelInfo)
-	sendToCleanupSvc := make(chan struct{})
-	cm := connmanager.NewConnectionManager(sendToCleanupSvc)
-	go tcp.HandleServiceCommunication(cm, sendToCleanupSvc)
+	cm := connmanager.NewConnectionManager()
+	go tcp.HandleServiceCommunication(cm)
 	http.NewServer(cm).Start()
 }
