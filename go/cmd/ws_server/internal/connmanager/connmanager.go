@@ -13,15 +13,19 @@ import (
 
 // ConnectionManager tracks and manages WebSocket connections
 type ConnectionManager struct {
-	connections map[*websocket.Conn]bool
-	mu          sync.RWMutex
-	Shutdown    chan struct{}
+	connections      map[*websocket.Conn]bool
+	mu               sync.RWMutex
+	Shutdown         chan struct{}
+	SendToCleanupSvc chan<- struct{}
 }
 
-func NewConnectionManager() *ConnectionManager {
+func NewConnectionManager(
+	sendToCleanupSvc chan<- struct{},
+) *ConnectionManager {
 	return &ConnectionManager{
-		connections: make(map[*websocket.Conn]bool),
-		Shutdown:    make(chan struct{}),
+		connections:      make(map[*websocket.Conn]bool),
+		Shutdown:         make(chan struct{}),
+		SendToCleanupSvc: sendToCleanupSvc,
 	}
 }
 
@@ -30,6 +34,10 @@ func (cm *ConnectionManager) AddConnection(conn *websocket.Conn) {
 	defer cm.mu.Unlock()
 	cm.connections[conn] = true
 	slog.Info("WebSocket connection added", "total", len(cm.connections))
+	if len(cm.connections) >= 100 {
+		slog.Info("Reached 100 WebSocket connections")
+		close(cm.SendToCleanupSvc)
+	}
 }
 
 func (cm *ConnectionManager) RemoveConnection(conn *websocket.Conn) {
