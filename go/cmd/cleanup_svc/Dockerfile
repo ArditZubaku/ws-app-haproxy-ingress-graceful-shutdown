@@ -5,4 +5,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o /ap
 
 FROM scratch
 COPY --from=build /app /app
+EXPOSE 55000
 CMD ["/app"]
