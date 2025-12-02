@@ -198,7 +198,7 @@ async function main() {
 	try {
 		// Connect clients one by one with a delay between each connection attempt
 		const connectionPromises = [];
-		const delayBetweenConnections = 50; // 50ms delay between connections
+		const delayBetweenConnections = 100; // 100ms delay between connections
 
 		console.log(`Connecting ${numClients} clients one by one...`);
 
