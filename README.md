@@ -12,7 +12,7 @@ This project tests **graceful shutdown scenarios** where:
 - Clients should receive proper close notifications
 - No connections should be abruptly dropped
 
-![Step-by-](image.png)
+![Step-by-step](image.png)
 
 ## Architecture
 
