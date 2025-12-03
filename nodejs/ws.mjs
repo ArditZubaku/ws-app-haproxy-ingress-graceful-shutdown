@@ -109,6 +109,13 @@ function connectToApp(url, retryCount = 0, maxRetries = 5, clientId = 1) {
 			console.log(`[Client ${clientId}][${url}] Received ${messageCount} messages`);
 			console.log(`[Client ${clientId}][${url}] Close code: ${code}, reason: ${reason.toString()}`);
 
+			// Don't retry if server sent CloseGoingAway (1001) - indicates graceful shutdown
+			if (code === 1001) {
+				console.log(`[Client ${clientId}] Server is going away (graceful shutdown). Not retrying.`);
+				resolve();
+				return;
+			}
+
 			// Only retry if -r flag is enabled
 			if (!enableRetries) {
 				console.log(`[Client ${clientId}] Connection closed. Retries disabled.`);
@@ -120,7 +127,6 @@ function connectToApp(url, retryCount = 0, maxRetries = 5, clientId = 1) {
 			const shouldRetry = retryCount < maxRetries && (
 				!connectionEstablished ||  // Initial connection failed
 				code === 1006 ||          // Abnormal closure
-				code === 1001 ||          // Going away (server restart)
 				code === 1011 ||          // Server error
 				code === 1012 ||          // Service restart
 				code === 1013 ||          // Try again later

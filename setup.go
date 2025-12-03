@@ -109,7 +109,7 @@ func main() {
 	println("Spinning up 100 Node.js WS clients")
 	c := make(chan struct{}, 1)
 	go func() {
-		execCmd("node nodejs/ws.mjs -s -n 100 > ws-clients.log 2>&1")
+		execCmd("node nodejs/ws.mjs -s -r -n 100 > ws-clients.log 2>&1")
 		close(c)
 	}()
 
