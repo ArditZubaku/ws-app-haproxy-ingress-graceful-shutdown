@@ -179,7 +179,7 @@ func makePatch() *Patch {
 								"echo \"preStop-trigger\" | /usr/bin/nc cleanup-svc.default.svc.cluster.local 55000 && " +
 								"echo \"Cleanup trigger sent, sleeping...\" >> /tmp/preStop.log && " +
 								"for i in $(seq 1 $DURATION); do echo \"Sleep $i/$DURATION\" >> /tmp/preStop.log; sleep 1; done && " +
-								"rm /tmp/preStop.log",
+								"rm /tmp/preStop.log /tmp/poststart.log /tmp/which.log || true",
 						},
 					},
 				},
