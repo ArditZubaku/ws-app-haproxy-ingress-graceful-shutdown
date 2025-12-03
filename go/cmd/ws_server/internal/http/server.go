@@ -39,6 +39,7 @@ func NewServer(cm *connmanager.ConnectionManager) *Server {
 	// Routes
 	mux.HandleFunc("/", handlers.RootHandler(cm))
 	mux.HandleFunc("/healthz", handlers.HealthzHandler)
+	mux.HandleFunc("/connections-count", handlers.ConnectionsCountHandler(cm))
 
 	// WebSocket cleanup when server shuts down
 	s.http.RegisterOnShutdown(func() {

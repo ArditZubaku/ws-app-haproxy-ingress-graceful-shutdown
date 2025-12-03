@@ -56,6 +56,13 @@ func (cm *ConnectionManager) GetNConnections(n int) []*websocket.Conn {
 	return connections
 }
 
+func (cm *ConnectionManager) GetConnectionsCount() int {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	return len(cm.connections)
+}
+
 func (cm *ConnectionManager) CloseNConnections(n int) {
 	connections := cm.GetNConnections(n)
 

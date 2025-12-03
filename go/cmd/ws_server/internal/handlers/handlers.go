@@ -158,3 +158,20 @@ func wsHandler(w http.ResponseWriter, r *http.Request, cm *connmanager.Connectio
 		}
 	}
 }
+
+func ConnectionsCountHandler(cm *connmanager.ConnectionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		count := cm.GetConnectionsCount()
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		response := map[string]int{"connections_count": count}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			slog.Error("Failed to encode connection count response", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+}
