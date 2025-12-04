@@ -36,7 +36,19 @@ func (cm *ConnectionManager) AddConnection(conn *websocket.Conn) {
 	}
 }
 
-func (cm *ConnectionManager) RemoveConnection(index int) {
+func (cm *ConnectionManager) RemoveConnection(conn *websocket.Conn) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cm.connections = slices.DeleteFunc(
+		cm.connections,
+		func(c *websocket.Conn) bool {
+			return c == conn
+		},
+	)
+	slog.Info("WebSocket connection removed", "total", len(cm.connections))
+}
+
+func (cm *ConnectionManager) RemoveConnectionByIndex(index int) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 	cm.connections = slices.Delete(cm.connections, index, index+1)
@@ -82,7 +94,7 @@ func (cm *ConnectionManager) CloseFirstNConnections(n int) {
 		}
 
 		// Remove from array
-		cm.RemoveConnection(i)
+		cm.RemoveConnectionByIndex(i)
 	}
 }
 
@@ -113,7 +125,7 @@ func (cm *ConnectionManager) CloseAllConnections(ctx context.Context) {
 		}
 
 		// Remove from array
-		cm.RemoveConnection(i)
+		cm.RemoveConnectionByIndex(i)
 	}
 
 	// Wait for all connections to be removed or timeout
