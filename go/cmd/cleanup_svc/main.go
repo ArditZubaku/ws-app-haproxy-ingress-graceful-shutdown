@@ -33,8 +33,8 @@ func performCleanupTask(wsServer string) {
 	slog.Info("Connected to WS Server at ", "addr", conn.RemoteAddr().String())
 
 	scanner := bufio.NewScanner(conn)
-	for {
-		n, err := fmt.Fprintln(conn, "11")
+	for range 10 {
+		n, err := fmt.Fprintln(conn, "10")
 		if err != nil || n == 0 {
 			slog.Error("Failed to write to service", "error", err)
 			return
